@@ -48,7 +48,7 @@ if len(sys.argv) == 3:
     distribution_path = output_path + '/dists/' + DISTRIBUTION
     component_path = distribution_path + '/' + COMPONENT
 else:
-    sys.exit('Usage: termux-apt-repository <directory-with-debs> <directory-to-publish>')
+    sys.exit('Usage: termux-apt-repo <directory-with-debs> <apt-repository-directory>')
 
 if not os.path.isdir(input_path):
     sys.exit("'" + input_path + '" does not exist')
