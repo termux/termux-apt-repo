@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+
+import datetime, hashlib, os, re, shutil, subprocess, sys
+
+DISTRIBUTION = 'termux'
+COMPONENT = 'extras'
+supported_arches = ['all', 'arm', 'i686', 'aarch64', 'x86_64']
+encountered_arches = set()
+
+def get_package_name(filename):
+    # Expects the 'name_version_arch.deb' naming scheme.
+    return filename.split('_')[0]
+
+def control_file_contents(debfile):
+    return subprocess.check_output(
+        ["ar p " + debfile + " control.tar.xz | tar --to-stdout -xJf - ./control"],
+        shell=True,
+        universal_newlines=True,
+        stderr=subprocess.DEVNULL
+    ).strip()
+
+def add_deb(deb_to_add_path):
+    deb_to_add_control_file = control_file_contents(deb_to_add_path)
+    deb_to_add_pkg_name = re.search('Package: (.*)', deb_to_add_control_file).group(1)
+    deb_to_add_pkg_version = re.search('Version: (.*)', deb_to_add_control_file).group(1)
+    deb_arch = re.search('Architecture: (.*)', deb_to_add_control_file).group(1)
+
+    if not deb_arch in supported_arches:
+        sys.exit('Unsupported arch "' + deb_arch + '" in ' + os.path.basename(deb_to_add_path))
+    encountered_arches.add(deb_arch)
+
+    package_name = get_package_name(os.path.basename(deb_to_add_path))
+    arch_dir_path = component_path + '/binary-' + deb_arch
+
+    if not os.path.isdir(arch_dir_path):
+        os.makedirs(arch_dir_path)
+
+    # Add .deb file:
+    print('Adding deb file: ' + os.path.basename(deb_to_add_path) + '...')
+    dest_deb_dir_path = component_path + '/binary-' + deb_arch
+    if not os.path.isdir(dest_deb_dir_path): os.makedirs(dest_deb_dir_path)
+    destination_deb_file = dest_deb_dir_path + '/' + os.path.basename(deb_to_add_path)
+    shutil.copy(deb_to_add_path, destination_deb_file)
+
+if len(sys.argv) == 3:
+    input_path = sys.argv[1]
+    output_path = sys.argv[2]
+    distribution_path = output_path + '/dists/' + DISTRIBUTION
+    component_path = distribution_path + '/' + COMPONENT
+else:
+    sys.exit('Usage: termux-apt-repository <directory-with-debs> <directory-to-publish>')
+
+if not os.path.isdir(input_path):
+    sys.exit("'" + input_path + '" does not exist')
+
+if os.path.exists(output_path):
+    shutil.rmtree(output_path)
+os.makedirs(component_path)
+
+added_debs_count = 0
+for f in sorted(os.listdir(input_path)):
+    if not f.endswith('.deb'): continue
+    deb_path = os.path.join(input_path, f)
+    added_debs_count += 1
+    add_deb(deb_path)
+
+if added_debs_count == 0:
+    sys.exit('Not .deb file found in ' + input_path)
+
+# See https://wiki.debian.org/RepositoryFormat#A.22Release.22_files for format:
+release_file_path = distribution_path + '/Release'
+release_file = open(release_file_path, 'w') 
+print("Codename: termux", file=release_file)
+print("Version: 1", file=release_file)
+print("Architectures: " + ' '.join(encountered_arches), file=release_file)
+print("Description: Extras repository", file=release_file)
+print("Suite: termux", file=release_file)
+print("Date: " + datetime.datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S UTC'), file=release_file)
+print("SHA256:", file=release_file)
+
+# Create Packages files and add their info to Release file:
+for arch in encountered_arches:
+    print('Creating package file for ' + arch + '...')
+    arch_dir_path = component_path + '/binary-' + arch
+    if not os.path.isdir(arch_dir_path): continue
+    packages_file_path = arch_dir_path + '/Packages'
+    packagesxz_file_path = packages_file_path + '.xz'
+    binary_path = 'binary-' + arch
+    with open(packages_file_path, 'w') as packages_file:
+        first = True
+        for f in sorted(os.listdir(arch_dir_path)):
+            if not f.endswith('.deb'):
+                continue
+            if first:
+                first = False
+            else:
+                print('', file=packages_file)
+            deb_to_read_path = os.path.join(arch_dir_path, f)
+            # Extract the control file from the .deb:
+            scanpackages_output = control_file_contents(deb_to_read_path)
+            package_name = re.search('Package: (.*)', scanpackages_output).group(1)
+            package_arch = re.search('Architecture: (.*)', scanpackages_output).group(1)
+            # Add these fields which dpkg-scanpackages would have done:
+            scanpackages_output += '\nFilename: dists/' + DISTRIBUTION + '/' + COMPONENT + '/' + binary_path + '/' + os.path.basename(deb_to_read_path)
+            scanpackages_output += '\nSize: ' + str(os.stat(deb_to_read_path).st_size)
+            scanpackages_output += '\nSHA256: ' + hashlib.sha256(open(deb_to_read_path, 'rb').read()).hexdigest()
+            print(scanpackages_output, file=packages_file)
+
+    # Create Packages.xz
+    subprocess.check_call(['rm -f ' + packagesxz_file_path + '; xz -9 --keep ' + packages_file_path], shell=True, universal_newlines=True)
+    # Write info about Packages and Packages.xz to Release file:
+    print(' ' + hashlib.sha256(open(packages_file_path, 'rb').read()).hexdigest()
+            + ' '
+            + str(os.stat(packages_file_path).st_size)
+            + ' ' + COMPONENT + '/' + binary_path + '/Packages'
+            , file=release_file)
+    print(' ' + hashlib.sha256(open(packagesxz_file_path, 'rb').read()).hexdigest()
+            + ' '
+            + str(os.stat(packagesxz_file_path).st_size)
+            + ' ' + COMPONENT + '/' + binary_path + '/Packages.xz'
+            , file=release_file)
+
+release_file.close()
+
+if False:
+    print('Signing with gpg...')
+    subprocess.check_call(['gpg --pinentry-mode loopback --digest-algo SHA256 --clearsign -o '
+        + distribution_path + '/InRelease ' + distribution_path + '/Release'],
+        shell=True,
+        universal_newlines=True)
+
+print('Done!')
+print('')
+print('Make the ' + output_path + ' directory accessible at $REPO_URL')
+print('')
+print('Users can then access the repo by adding a file at')
+print('   $PREFIX/etc/apt/sources.list.d')
+print('containing the single line:')
+print('   deb [trusted=yes] $REPO_URL termux extras')
+print('If the $REPO_URL is https, users must first install the apt-transport-https package')
