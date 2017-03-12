@@ -2,6 +2,8 @@ termux-apt-repo
 ---------------
 Script to create simple Termux apt repositories.
 
+It can be used to publish cross-compiled packages created using the [Termux build setup](https://github.com/termux/termux-packages), or with packages created on-device with [termux-create-package](https://github.com/termux/termux-create-package).
+
 Usage instructions
 ------------------
 In Termux, install with `packages install termux-apt-repo` and execute as:
