@@ -40,7 +40,7 @@ def add_deb(deb_to_add_path):
     dest_deb_dir_path = component_path + '/binary-' + deb_arch
     if not os.path.isdir(dest_deb_dir_path): os.makedirs(dest_deb_dir_path)
     destination_deb_file = dest_deb_dir_path + '/' + os.path.basename(deb_to_add_path)
-    shutil.copy(deb_to_add_path, destination_deb_file)
+    shutil.copy2(deb_to_add_path, destination_deb_file)
 
 if len(sys.argv) == 3:
     input_path = sys.argv[1]
