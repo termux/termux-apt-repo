@@ -23,6 +23,8 @@ The published folder can be made available at a publicly accessible `$REPO_URL` 
 3. Creating a zip or tar file and unpacking it at a web server.
 4. Any other creative way.
 
+It can also be published using e.g. [GitHub pages](https://pages.github.com/).
+
 Accessing the repository
 ------------------------
 With the created `<apt-repository-directory>` available at `$REPO_URL`, users can access repo by creating a file:
