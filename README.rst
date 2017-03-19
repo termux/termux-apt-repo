@@ -19,8 +19,7 @@ as:
     termux-apt-repo <directory-with-debs> <apt-repository-directory>
 
 When using outside Termux (the script should work on most Linux
-distributions), or when developing this script inside Termux, run the
-script directory with ``python termux-apt-repo``.
+distributions), install with ``pip3 install termux-apt-repo``.
 
 All the .deb files in the first directory will be published to a newly
 created APT repository in the second directory (which will be deleted if
