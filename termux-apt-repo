@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import datetime, hashlib, os, re, shutil, subprocess, sys
+import datetime, hashlib, os, re, shutil, subprocess, sys, glob
 
 DISTRIBUTION = 'termux'
 COMPONENT = 'extras'
@@ -57,15 +57,13 @@ if os.path.exists(output_path):
     shutil.rmtree(output_path)
 os.makedirs(component_path)
 
-added_debs_count = 0
-for f in sorted(os.listdir(input_path)):
-    if not f.endswith('.deb'): continue
-    deb_path = os.path.join(input_path, f)
-    added_debs_count += 1
-    add_deb(deb_path)
-
-if added_debs_count == 0:
+debs_in_path = glob.glob(os.path.join(input_path, "*.deb"))
+if not debs_in_path:
     sys.exit('Not .deb file found in ' + input_path)
+else:
+    for f in sorted(debs_in_path):
+        deb_path = f
+        add_deb(deb_path)
 
 # See https://wiki.debian.org/RepositoryFormat#A.22Release.22_files for format:
 release_file_path = distribution_path + '/Release'
@@ -88,14 +86,11 @@ for arch in encountered_arches:
     binary_path = 'binary-' + arch
     with open(packages_file_path, 'w') as packages_file:
         first = True
-        for f in sorted(os.listdir(arch_dir_path)):
-            if not f.endswith('.deb'):
-                continue
+        for deb_to_read_path in sorted(glob.glob(os.path.join(arch_dir_path, "*.deb"))):
             if first:
                 first = False
             else:
                 print('', file=packages_file)
-            deb_to_read_path = os.path.join(arch_dir_path, f)
             # Extract the control file from the .deb:
             scanpackages_output = control_file_contents(deb_to_read_path)
             package_name = re.search('Package: (.*)', scanpackages_output).group(1)
