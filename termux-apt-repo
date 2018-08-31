@@ -6,6 +6,7 @@ DISTRIBUTION = 'termux'
 COMPONENT = 'extras'
 supported_arches = ['all', 'arm', 'i686', 'aarch64', 'x86_64']
 encountered_arches = set()
+hashes = ['md5', 'sha1', 'sha256', 'sha512']
 
 def get_package_name(filename):
     # Expects the 'name_version_arch.deb' naming scheme.
@@ -74,7 +75,6 @@ print("Architectures: " + ' '.join(encountered_arches), file=release_file)
 print("Description: Extras repository", file=release_file)
 print("Suite: termux", file=release_file)
 print("Date: " + datetime.datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S UTC'), file=release_file)
-print("SHA256:", file=release_file)
 
 # Create Packages files and add their info to Release file:
 for arch in encountered_arches:
@@ -98,23 +98,39 @@ for arch in encountered_arches:
             # Add these fields which dpkg-scanpackages would have done:
             scanpackages_output += '\nFilename: dists/' + DISTRIBUTION + '/' + COMPONENT + '/' + binary_path + '/' + os.path.basename(deb_to_read_path)
             scanpackages_output += '\nSize: ' + str(os.stat(deb_to_read_path).st_size)
-            scanpackages_output += '\nSHA256: ' + hashlib.sha256(open(deb_to_read_path, 'rb').read()).hexdigest()
+            for hash in hashes:
+                if hash == "md5":
+                    hash_string = hash.upper()+'Sum'
+                else:
+                    hash_string = hash.upper()
+                scanpackages_output += '\n'+hash_string + ': ' + getattr(hashlib, hash)(open(deb_to_read_path, 'rb').read()).hexdigest()
             print(scanpackages_output, file=packages_file)
 
     # Create Packages.xz
     subprocess.check_call(['rm -f ' + packagesxz_file_path + '; xz -9 --keep ' + packages_file_path], shell=True, universal_newlines=True)
-    # Write info about Packages and Packages.xz to Release file:
-    print(' ' + hashlib.sha256(open(packages_file_path, 'rb').read()).hexdigest()
-            + ' '
-            + str(os.stat(packages_file_path).st_size)
-            + ' ' + COMPONENT + '/' + binary_path + '/Packages'
-            , file=release_file)
-    print(' ' + hashlib.sha256(open(packagesxz_file_path, 'rb').read()).hexdigest()
-            + ' '
-            + str(os.stat(packagesxz_file_path).st_size)
-            + ' ' + COMPONENT + '/' + binary_path + '/Packages.xz'
-            , file=release_file)
 
+for hash in hashes:
+    if hash == 'md5':
+        hash_string = hash.upper()+'Sum'
+    else:
+        hash_string = hash.upper()
+    print(hash_string + ': ', file=release_file)
+
+    for arch in encountered_arches:
+        arch_dir_path = component_path + '/binary-' + arch
+        if not os.path.isdir(arch_dir_path): continue
+        packages_file_path = arch_dir_path + '/Packages'
+        packagesxz_file_path = packages_file_path + '.xz'
+        binary_path = 'binary-' + arch
+        # Write info about Packages and Packages.xz to Release file:
+        print(' '+' '.join([getattr(hashlib, hash)(open(packages_file_path, 'rb').read()).hexdigest(),
+                            str(os.stat(packages_file_path).st_size),
+                            os.path.join(COMPONENT, binary_path, 'Packages')])
+              , file=release_file)
+        print(' '+' '.join([getattr(hashlib, hash)(open(packagesxz_file_path, 'rb').read()).hexdigest(),
+                            str(os.stat(packagesxz_file_path).st_size),
+                            os.path.join(COMPONENT, binary_path, 'Packages.xz')])
+              , file=release_file)
 release_file.close()
 
 if False:
