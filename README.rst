@@ -69,7 +69,7 @@ containing the single line:
 
     deb [trusted=yes] $REPO_URL $dist $comp
 
-[trusted=yes] is needed if the repo has not been signed with a gpg key.
-To sign it, edit `termux-apt-repo` and change `if False:` to `if True:` near
+``[trusted=yes]`` is needed if the repo has not been signed with a gpg key.
+To sign it, edit ``termux-apt-repo`` and change ``if False:`` to ``if True:`` near
 end of script. The signing key then has to be imported by the user to make apt
 trust it.
