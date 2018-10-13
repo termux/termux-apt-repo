@@ -141,7 +141,7 @@ release_file.close()
 
 if False:
     print('Signing with gpg...')
-    subprocess.check_call(['gpg --pinentry-mode loopback --digest-algo SHA256 --clearsign -o '
+    subprocess.check_call(['gpg --yes --pinentry-mode loopback --digest-algo SHA256 --clearsign -o '
         + distribution_path + '/InRelease ' + distribution_path + '/Release'],
         shell=True,
         universal_newlines=True)
