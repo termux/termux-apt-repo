@@ -31,55 +31,57 @@ def add_deb(deb_to_add_path):
     encountered_arches.add(deb_arch)
 
     package_name = get_package_name(os.path.basename(deb_to_add_path))
-    arch_dir_path = component_path + '/binary-' + deb_arch
+    arch_dir_path = os.path.join(distribution_path, COMPONENT, 'binary-' + deb_arch)
 
     if not os.path.isdir(arch_dir_path):
         os.makedirs(arch_dir_path)
 
     # Add .deb file:
     print('Adding deb file: ' + os.path.basename(deb_to_add_path) + '...')
-    dest_deb_dir_path = component_path + '/binary-' + deb_arch
+    dest_deb_dir_path = os.path.join(distribution_path, COMPONENT, 'binary-' + deb_arch)
     if not os.path.isdir(dest_deb_dir_path): os.makedirs(dest_deb_dir_path)
-    destination_deb_file = dest_deb_dir_path + '/' + os.path.basename(deb_to_add_path)
+    destination_deb_file = os.path.join(dest_deb_dir_path, os.path.basename(deb_to_add_path))
     shutil.copy2(deb_to_add_path, destination_deb_file)
 
-if len(sys.argv) == 3:
+if len(sys.argv) > 2:
     input_path = sys.argv[1]
     output_path = sys.argv[2]
-    distribution_path = output_path + '/dists/' + DISTRIBUTION
-    component_path = distribution_path + '/' + COMPONENT
+    if len(sys.argv) > 3:
+        DISTRIBUTION = sys.argv[3]
+    if len(sys.argv) > 4:
+        COMPONENT = sys.argv[4]
+    distribution_path = os.path.join(output_path, 'dists', DISTRIBUTION)
 else:
-    sys.exit('Usage: termux-apt-repo <directory-with-debs> <apt-repository-directory>')
+    sys.exit('Usage: termux-apt-repo <directory-with-debs> <apt-repository-directory> [<distribution> <component>]\n    <distribution> and <component> defaults to "termux" and "extras" if arguments are omitted')
 
 if not os.path.isdir(input_path):
     sys.exit("'" + input_path + '" does not exist')
 
-if os.path.exists(output_path):
-    shutil.rmtree(output_path)
-os.makedirs(component_path)
+if os.path.exists(os.path.join(distribution_path, COMPONENT)):
+    shutil.rmtree(os.path.join(distribution_path, COMPONENT))
+os.makedirs(os.path.join(distribution_path, COMPONENT))
 
 debs_in_path = glob.glob(os.path.join(input_path, "*.deb"))
 if not debs_in_path:
     sys.exit('Not .deb file found in ' + input_path)
 else:
-    for f in sorted(debs_in_path):
-        deb_path = f
+    for deb_path in sorted(debs_in_path):
         add_deb(deb_path)
 
 # See https://wiki.debian.org/RepositoryFormat#A.22Release.22_files for format:
 release_file_path = distribution_path + '/Release'
-release_file = open(release_file_path, 'w') 
+release_file = open(release_file_path, 'w')
 print("Codename: termux", file=release_file)
 print("Version: 1", file=release_file)
 print("Architectures: " + ' '.join(encountered_arches), file=release_file)
-print("Description: Extras repository", file=release_file)
-print("Suite: termux", file=release_file)
+print("Description: " + DISTRIBUTION + " repository", file=release_file)
+print("Suite: " + DISTRIBUTION, file=release_file)
 print("Date: " + datetime.datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S UTC'), file=release_file)
 
 # Create Packages files and add their info to Release file:
 for arch in encountered_arches:
     print('Creating package file for ' + arch + '...')
-    arch_dir_path = component_path + '/binary-' + arch
+    arch_dir_path = os.path.join(distribution_path, COMPONENT, 'binary-' + arch)
     if not os.path.isdir(arch_dir_path): continue
     packages_file_path = arch_dir_path + '/Packages'
     packagesxz_file_path = packages_file_path + '.xz'
@@ -96,7 +98,7 @@ for arch in encountered_arches:
             package_name = re.search('Package: (.*)', scanpackages_output).group(1)
             package_arch = re.search('Architecture: (.*)', scanpackages_output).group(1)
             # Add these fields which dpkg-scanpackages would have done:
-            scanpackages_output += '\nFilename: dists/' + DISTRIBUTION + '/' + COMPONENT + '/' + binary_path + '/' + os.path.basename(deb_to_read_path)
+            scanpackages_output += '\nFilename: ' + os.path.join('dists', DISTRIBUTION, COMPONENT, binary_path, os.path.basename(deb_to_read_path))
             scanpackages_output += '\nSize: ' + str(os.stat(deb_to_read_path).st_size)
             for hash in hashes:
                 if hash == "md5":
@@ -117,7 +119,7 @@ for hash in hashes:
     print(hash_string + ': ', file=release_file)
 
     for arch in encountered_arches:
-        arch_dir_path = component_path + '/binary-' + arch
+        arch_dir_path = os.path.join(distribution_path, COMPONENT, 'binary-' + arch)
         if not os.path.isdir(arch_dir_path): continue
         packages_file_path = arch_dir_path + '/Packages'
         packagesxz_file_path = packages_file_path + '.xz'
