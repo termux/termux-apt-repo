@@ -152,5 +152,6 @@ print('Make the ' + output_path + ' directory accessible at $REPO_URL')
 print('')
 print('Users can then access the repo by adding a file at')
 print('   $PREFIX/etc/apt/sources.list.d')
-print('containing the single line:')
-print('   deb $REPO_URL termux extras')
+print('containing:')
+for component in COMPONENTS:
+    print('   deb $REPO_URL '+DISTRIBUTION+' '+component)
