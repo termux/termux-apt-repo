@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import datetime, hashlib, os, re, shutil, subprocess, sys, glob
+import datetime, hashlib, os, re, shutil, subprocess, sys, glob, argparse
 
 DISTRIBUTION = 'termux'
 COMPONENTS = ['extras']
@@ -43,16 +43,22 @@ def add_deb(deb_to_add_path, component):
     destination_deb_file = os.path.join(dest_deb_dir_path, os.path.basename(deb_to_add_path))
     shutil.copy2(deb_to_add_path, destination_deb_file)
 
-if len(sys.argv) > 2:
-    input_path = sys.argv[1]
-    output_path = sys.argv[2]
-    if len(sys.argv) > 3:
-        DISTRIBUTION = sys.argv[3]
-    if len(sys.argv) > 4:
-        COMPONENTS = [sys.argv[4]]
-    distribution_path = os.path.join(output_path, 'dists', DISTRIBUTION)
-else:
-    sys.exit('Usage: termux-apt-repo <directory-with-debs> <apt-repository-directory> [<distribution> <component>]\n    <distribution> and <component> defaults to "termux" and "extras" if arguments are omitted')
+parser = argparse.ArgumentParser(description='Create a repository with deb files')
+parser.add_argument('input', metavar='input', type=str,
+                    help='folder where .deb files are located')
+parser.add_argument('output', metavar='output', type=str,
+                    help='folder with repository tree')
+parser.add_argument('distribution', metavar='dist', type=str, nargs='?', default='termux',
+                    help='name of distribution folder. deb files are put into output/dists/distribution/component/binary-$ARCH/')
+parser.add_argument('component', metavar='comp', type=str, nargs='?', default='extras',
+                    help='name of component folder. deb files are put into output/dists/distribution/component/binary-$ARCH/')
+
+args = parser.parse_args()
+input_path = args.input
+output_path = args.output
+DISTRIBUTION = args.distribution
+COMPONENTS = [args.component]
+distribution_path = os.path.join(output_path, 'dists', DISTRIBUTION)
 
 if not os.path.isdir(input_path):
     sys.exit("'" + input_path + '" does not exist')
