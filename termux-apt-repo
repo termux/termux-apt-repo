@@ -2,8 +2,7 @@
 
 import datetime, hashlib, os, re, shutil, subprocess, sys, glob, argparse
 
-DISTRIBUTION = 'termux'
-COMPONENTS = ['extras']
+COMPONENTS = []
 supported_arches = ['all', 'arm', 'i686', 'aarch64', 'x86_64']
 encountered_arches = set()
 hashes = ['md5', 'sha1', 'sha256', 'sha512']
@@ -62,17 +61,12 @@ args = parser.parse_args()
 input_path = args.input
 output_path = args.output
 DISTRIBUTION = args.distribution
-COMPONENTS = [args.component]
+default_component = args.component
 use_hard_links = args.use_hard_links
 distribution_path = os.path.join(output_path, 'dists', DISTRIBUTION)
 
 if not os.path.isdir(input_path):
     sys.exit("'" + input_path + '" does not exist')
-
-for component in COMPONENTS:
-    if os.path.exists(os.path.join(distribution_path, component)):
-        shutil.rmtree(os.path.join(distribution_path, component))
-        os.makedirs(os.path.join(distribution_path, component))
 
 debs_in_path = glob.glob(os.path.join(input_path, "*.deb"))
 debs_in_path += glob.glob(os.path.join(input_path, "*/*.deb"))
@@ -82,11 +76,13 @@ else:
     for deb_path in sorted(debs_in_path):
         component = os.path.dirname(os.path.relpath(deb_path, input_path))
         if not component:
-            component = COMPONENTS[0]
-        else:
+            component = default_component
+        if component not in COMPONENTS:
             COMPONENTS.append(component)
+            shutil.rmtree(os.path.join(distribution_path, component))
+            os.makedirs(os.path.join(distribution_path, component))
+
         add_deb(deb_path, component, use_hard_links)
-COMPONENTS = list(set(COMPONENTS))
 
 # See https://wiki.debian.org/RepositoryFormat#A.22Release.22_files for format:
 release_file_path = distribution_path + '/Release'
