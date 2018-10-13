@@ -20,7 +20,7 @@ def control_file_contents(debfile):
         stderr=subprocess.DEVNULL
     ).strip()
 
-def add_deb(deb_to_add_path, component):
+def add_deb(deb_to_add_path, component, use_hard_links):
     deb_to_add_control_file = control_file_contents(deb_to_add_path)
     deb_to_add_pkg_name = re.search('Package: (.*)', deb_to_add_control_file).group(1)
     deb_to_add_pkg_version = re.search('Version: (.*)', deb_to_add_control_file).group(1)
@@ -41,7 +41,10 @@ def add_deb(deb_to_add_path, component):
     dest_deb_dir_path = os.path.join(distribution_path, component, 'binary-' + deb_arch)
     if not os.path.isdir(dest_deb_dir_path): os.makedirs(dest_deb_dir_path)
     destination_deb_file = os.path.join(dest_deb_dir_path, os.path.basename(deb_to_add_path))
-    shutil.copy2(deb_to_add_path, destination_deb_file)
+    if not use_hard_links:
+        shutil.copy2(deb_to_add_path, destination_deb_file)
+    else:
+        os.link(deb_to_add_path, destination_deb_file)
 
 parser = argparse.ArgumentParser(description='Create a repository with deb files')
 parser.add_argument('input', metavar='input', type=str,
@@ -52,12 +55,15 @@ parser.add_argument('distribution', metavar='dist', type=str, nargs='?', default
                     help='name of distribution folder. deb files are put into output/dists/distribution/component/binary-$ARCH/')
 parser.add_argument('component', metavar='comp', type=str, nargs='?', default='extras',
                     help='name of component folder. deb files are put into output/dists/distribution/component/binary-$ARCH/')
+parser.add_argument('--use-hard-links', default=False, action='store_true',
+                    help='use hard links instead of copying deb files. Will not work on an android device')
 
 args = parser.parse_args()
 input_path = args.input
 output_path = args.output
 DISTRIBUTION = args.distribution
 COMPONENTS = [args.component]
+use_hard_links = args.use_hard_links
 distribution_path = os.path.join(output_path, 'dists', DISTRIBUTION)
 
 if not os.path.isdir(input_path):
@@ -79,7 +85,7 @@ else:
             component = COMPONENTS[0]
         else:
             COMPONENTS.append(component)
-        add_deb(deb_path, component)
+        add_deb(deb_path, component, use_hard_links)
 COMPONENTS = list(set(COMPONENTS))
 
 # See https://wiki.debian.org/RepositoryFormat#A.22Release.22_files for format:
