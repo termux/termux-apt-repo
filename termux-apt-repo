@@ -63,7 +63,7 @@ os.makedirs(os.path.join(distribution_path, COMPONENT))
 
 debs_in_path = glob.glob(os.path.join(input_path, "*.deb"))
 if not debs_in_path:
-    sys.exit('Not .deb file found in ' + input_path)
+    sys.exit('No .deb file found in ' + input_path)
 else:
     for deb_path in sorted(debs_in_path):
         add_deb(deb_path)
