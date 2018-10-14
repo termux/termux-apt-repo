@@ -79,7 +79,8 @@ else:
             component = default_component
         if component not in COMPONENTS:
             COMPONENTS.append(component)
-            shutil.rmtree(os.path.join(distribution_path, component))
+            if os.path.isdir(os.path.join(distribution_path, component)):
+                shutil.rmtree(os.path.join(distribution_path, component))
             os.makedirs(os.path.join(distribution_path, component))
 
         add_deb(deb_path, component, use_hard_links)
