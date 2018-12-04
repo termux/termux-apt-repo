@@ -11,13 +11,37 @@ def get_package_name(filename):
     # Expects the 'name_version_arch.deb' naming scheme.
     return filename.split('_')[0]
 
+def run_shell_command(cmd):
+    try:
+        return subprocess.check_output([cmd], shell=True,
+                                       universal_newlines=True,
+                                       stderr=subprocess.DEVNULL).strip()
+    except subprocess.CalledProcessError:
+        return None
+
 def control_file_contents(debfile):
-    return subprocess.check_output(
-        ["ar p " + debfile + " control.tar.xz | tar --to-stdout -xJf - ./control"],
-        shell=True,
-        universal_newlines=True,
-        stderr=subprocess.DEVNULL
-    ).strip()
+    file_list = run_shell_command("ar t {}".format(debfile))
+    if file_list is None:
+        sys.exit("Error listing contents of '{}'".format(debfile))
+    
+    file_list = file_list.split("\n")
+
+    if "control.tar.gz" in file_list:
+        control_filename = "control.tar.gz"
+        tar_args = "-z"
+    elif "control.tar.xz" in file_list:
+        control_filename = "control.tar.xz"
+        tar_args = "-J"
+    else:
+        sys.exit("Failed to find control file in '{}'".format(debfile))
+
+    cmd_fmt = "ar p {} {} | tar -O {} -xf - ./control"
+    cmd = cmd_fmt.format(debfile, control_filename, tar_args)
+    contents = run_shell_command(cmd)
+    if contents is None:
+        sys.exit("Error extracting control file from '{}'".format(debfile))
+    
+    return contents
 
 def add_deb(deb_to_add_path, component, use_hard_links):
     deb_to_add_control_file = control_file_contents(deb_to_add_path)
