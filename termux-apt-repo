@@ -166,3 +166,4 @@ for component in COMPONENTS:
     print('   deb [trusted=yes] $REPO_URL '+DISTRIBUTION+' '+component)
 print('')
 print('[trusted=yes] is not needed if the repo has been signed with a gpg key')
+os.system('tar -zcvf' + 'apt.tar.gz' + output-path)
