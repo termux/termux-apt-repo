@@ -19,6 +19,15 @@ def control_file_contents(debfile):
         stderr=subprocess.DEVNULL
     ).strip()
 
+def list_package_files(debfile):
+    all_content = subprocess.check_output(
+        ["ar p " + debfile + " data.tar.xz | tar -tJ"],
+        shell=True,
+        universal_newlines=True,
+        stderr=subprocess.DEVNULL
+    )
+    return [files.strip("./") for files in all_content.splitlines() if not files[-1] == "/"]
+
 def add_deb(deb_to_add_path, component, use_hard_links):
     deb_to_add_control_file = control_file_contents(deb_to_add_path)
     deb_to_add_pkg_name = re.search('Package: (.*)', deb_to_add_control_file).group(1)
@@ -40,10 +49,15 @@ def add_deb(deb_to_add_path, component, use_hard_links):
     dest_deb_dir_path = os.path.join(distribution_path, component, 'binary-' + deb_arch)
     if not os.path.isdir(dest_deb_dir_path): os.makedirs(dest_deb_dir_path)
     destination_deb_file = os.path.join(dest_deb_dir_path, os.path.basename(deb_to_add_path))
-    if not use_hard_links:
-        shutil.copy2(deb_to_add_path, destination_deb_file)
-    else:
+
+    if use_hard_links:
         os.link(deb_to_add_path, destination_deb_file)
+    else:
+        shutil.copy2(deb_to_add_path, destination_deb_file)
+
+    with open(os.path.join(distribution_path, component, 'Contents-' + deb_arch), 'a') as contents_file:
+        for f in list_package_files(destination_deb_file):
+            print("%-80s %s" % (f, deb_to_add_pkg_name), file=contents_file)
 
 parser = argparse.ArgumentParser(description='Create a repository with deb files')
 parser.add_argument('input', metavar='input', type=str,
@@ -121,7 +135,9 @@ for component in COMPONENTS:
                 print(scanpackages_output, file=packages_file)
                 print('', file=packages_file)
         # Create Packages.xz
-        subprocess.check_call(['rm -f ' + packagesxz_file_path + '; xz -9 --keep ' + packages_file_path], shell=True, universal_newlines=True)
+        subprocess.check_call(['xz -9 --keep ' + packages_file_path], shell=True, universal_newlines=True)
+    for contents_file in glob.glob(os.path.join(distribution_path, component, 'Contents-*')):
+        subprocess.check_call(['xz -9 --keep ' + contents_file], shell=True, universal_newlines=True)
 
 # Get components in output folder, we might have more folders than we are adding now
 COMPONENTS = [d for d in os.listdir(distribution_path) if os.path.isdir(os.path.join(distribution_path, d))]
@@ -134,17 +150,16 @@ for hash in hashes:
 
     for component in COMPONENTS:
         for arch_dir_path in glob.glob(os.path.join(distribution_path, component, 'binary-*')):
-            packages_file_path = arch_dir_path + '/Packages'
-            packagesxz_file_path = packages_file_path + '.xz'
-            binary_path = os.path.basename(arch_dir_path)
             # Write info about Packages and Packages.xz to Release file:
-            print(' '+' '.join([getattr(hashlib, hash)(open(packages_file_path, 'rb').read()).hexdigest(),
-                                str(os.stat(packages_file_path).st_size),
-                                os.path.join(component, binary_path, 'Packages')])
-                  , file=release_file)
-            print(' '+' '.join([getattr(hashlib, hash)(open(packagesxz_file_path, 'rb').read()).hexdigest(),
-                                str(os.stat(packagesxz_file_path).st_size),
-                                os.path.join(component, binary_path, 'Packages.xz')])
+            for f in ['Packages', 'Packages.xz']:
+                print(' '+' '.join([getattr(hashlib, hash)(open(os.path.join(arch_dir_path, f), 'rb').read()).hexdigest(),
+                                    str(os.stat(os.path.join(arch_dir_path, f)).st_size),
+                                    os.path.join(component, os.path.basename(arch_dir_path), f)])
+                      , file=release_file)
+        # Write info about Contents and Contents.gz to Release file:
+        for contents_file in glob.glob(os.path.join(distribution_path, component, 'Contents-*')):
+            print(' '+' '.join([getattr(hashlib, hash)(open(contents_file, 'rb').read()).hexdigest(),
+                                str(os.stat(contents_file).st_size), os.path.relpath(contents_file, distribution_path)])
                   , file=release_file)
 release_file.close()
 
