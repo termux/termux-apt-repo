@@ -130,7 +130,7 @@ for hash in hashes:
         hash_string = hash.upper()+'Sum'
     else:
         hash_string = hash.upper()
-    print(hash_string + ': ', file=release_file)
+    print(hash_string + ':', file=release_file)
 
     for component in COMPONENTS:
         for arch_dir_path in glob.glob(os.path.join(distribution_path, component, 'binary-*')):
