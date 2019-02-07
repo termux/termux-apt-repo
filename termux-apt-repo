@@ -168,6 +168,7 @@ for component in COMPONENTS:
 
 # Get components in output folder, we might have more folders than we are adding now
 COMPONENTS = [d for d in os.listdir(distribution_path) if os.path.isdir(os.path.join(distribution_path, d))]
+print("Components: " + ' '.join(COMPONENTS), file=release_file)
 for hash in hashes:
     if hash == 'md5':
         hash_string = hash.upper()+'Sum'
