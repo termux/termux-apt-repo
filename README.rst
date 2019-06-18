@@ -30,6 +30,7 @@ as:
     -h, --help        show this help message and exit
     --use-hard-links  use hard links instead of copying deb files. Will not work
                       on an android device
+    -s --sign         sign repo with GPG key
 
 When using outside Termux (the script should work on most Linux
 distributions), install with ``pip3 install termux-apt-repo``.
@@ -70,6 +71,5 @@ containing the single line:
     deb [trusted=yes] $REPO_URL $dist $comp
 
 ``[trusted=yes]`` is needed if the repo has not been signed with a gpg key.
-To sign it, edit ``termux-apt-repo`` and change ``if False:`` to ``if True:`` near
-end of script. The signing key then has to be imported by the user to make apt
-trust it.
+To sign it, pass ``--sign`` argument. The signing key then has to be imported by
+the user to make apt trust it.
