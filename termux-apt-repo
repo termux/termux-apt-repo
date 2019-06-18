@@ -94,6 +94,8 @@ parser.add_argument('component', metavar='comp', type=str, nargs='?', default='e
                     help='name of component folder. deb files are put into output/dists/distribution/component/binary-$ARCH/')
 parser.add_argument('--use-hard-links', default=False, action='store_true',
                     help='use hard links instead of copying deb files. Will not work on an android device')
+parser.add_argument('-s', '--sign', action='store_true',
+                    help='sign repo with GPG key')
 
 args = parser.parse_args()
 input_path = args.input
@@ -101,6 +103,7 @@ output_path = args.output
 DISTRIBUTION = args.distribution
 default_component = args.component
 use_hard_links = args.use_hard_links
+sign = args.sign
 distribution_path = os.path.join(output_path, 'dists', DISTRIBUTION)
 
 if not os.path.isdir(input_path):
@@ -187,7 +190,7 @@ for hash in hashes:
                   , file=release_file)
 release_file.close()
 
-if False:
+if sign:
     print('Signing with gpg...')
     subprocess.check_call(['gpg --yes --pinentry-mode loopback --digest-algo SHA256 --clearsign -o '
         + distribution_path + '/InRelease ' + distribution_path + '/Release'],
