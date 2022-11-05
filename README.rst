@@ -11,7 +11,7 @@ with packages created (possibly on-device) with
 Usage instructions
 ------------------
 
-In Termux, install with ``packages install termux-apt-repo`` and execute
+In Termux, install with ``pkg install termux-apt-repo`` and execute
 as:
 
 ::
