@@ -7,7 +7,7 @@ def readme():
         return f.read()
 setup(
     name = 'termux-apt-repo',
-    version = '0.4',
+    version = '0.5',
     license='Apache License 2.0',
     description = 'Script to create Termux apt repositories',
     long_description = readme(),
