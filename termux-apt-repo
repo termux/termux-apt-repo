@@ -152,7 +152,7 @@ print("Version: 1", file=release_file)
 print("Architectures: " + ' '.join(encountered_arches), file=release_file)
 print("Description: " + DISTRIBUTION + " repository", file=release_file)
 print("Suite: " + DISTRIBUTION, file=release_file)
-print("Date: " + datetime.datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S UTC'), file=release_file)
+print("Date: " + datetime.datetime.now(datetime.UTC).strftime('%a, %d %b %Y %H:%M:%S UTC'), file=release_file)
 
 # Create Packages files:
 for component in COMPONENTS:
